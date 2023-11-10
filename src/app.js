@@ -4,8 +4,9 @@ App = {
   load: async () => {
     await App.loadWeb3();
     await App.loadAccount();
-    await App.loadContract();
-    await App.render();
+    // await App.loadContract();
+    await App.loadIdentityContract();
+    // await App.render();
     web3.eth.defaultAccount = web3.eth.accounts[0];
   },
 
@@ -53,13 +54,44 @@ App = {
     console.log(App.account);
   },
 
+  loadIdentityContract: async () => {
+    const idendityManagement = await $.getJSON("IdentityManagement.json");
+    try {
+      App.contracts.IdentityManagement = TruffleContract(idendityManagement);
+      window.contracts = App.contracts;
+      App.contracts.IdentityManagement.setProvider(App.web3Provider);
+
+      // Hydrate the smart contract with values from the blockchain
+
+      App.identityManagement =
+        await App.contracts.IdentityManagement.deployed();
+    } catch (error) {
+      console.log("Error in deploying IdentityManagement: ", error);
+    }
+  },
+
   loadContract: async () => {
     const todoList = await $.getJSON("TodoList.json");
     App.contracts.TodoList = TruffleContract(todoList);
+    window.contracts = App.contracts;
+
     App.contracts.TodoList.setProvider(App.web3Provider);
 
     // Hydrate the smart contract with values from the blockchain
     App.todoList = await App.contracts.TodoList.deployed();
+
+    // await App.loadIdentityContract();
+  },
+
+  createIdentity: async () => {
+    App.setLoading(true);
+    const name = $("#newIdentityName").val();
+    const email = $("#newIdentityEmail").val();
+
+    await App.identityManagement.createIdentity(name, email, {
+      from: App.account,
+    });
+    window.location.reload();
   },
 
   render: async () => {
@@ -140,5 +172,10 @@ App = {
 $(() => {
   $(window).load(() => {
     App.load();
+  });
+
+  $("#createIdentityForm").submit((event) => {
+    event.preventDefault();
+    App.createIdentity();
   });
 });
